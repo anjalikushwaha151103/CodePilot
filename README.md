@@ -215,7 +215,7 @@ The FastAPI microservice performs deterministic static analysis using Tree-sitte
 - **LLM Providers:** Abstracted interface supporting Gemini, OpenAI, and Mock implementations.  
 - **Pedagogical Guardrails:** 5-Level Hint System (Socratic Probe to Full Solution). 
 
- # #   G e t t i n g   S t a r t e d 
- 
- F o r   l o c a l   d e v e l o p m e n t   s e t u p   i n s t r u c t i o n s ,   s e e   [ L O C A L _ S E T U P . m d ] ( d o c s / d e v e l o p m e n t / L O C A L _ S E T U P . m d ) .  
- 
+
+## Getting Started
+
+For local development setup instructions, see [LOCAL_SETUP.md](docs/development/LOCAL_SETUP.md).
