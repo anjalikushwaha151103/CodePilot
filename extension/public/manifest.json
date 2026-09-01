@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "CodePilot - AI Coding Mentor",
+  "version": "1.0.0",
+  "description": "AI-powered coding mentor for LeetCode & Codeforces. Teach the student how to think, not just what to type.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://leetcode.com/*",
+    "https://codeforces.com/*",
+    "http://localhost:8080/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://leetcode.com/problems/*",
+        "https://codeforces.com/problemset/problem/*",
+        "https://codeforces.com/contest/*/problem/*"
+      ],
+      "js": ["content/content-script.js"]
+    }
+  ],
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "action": {
+    "default_title": "CodePilot Mentor"
+  }
+}
