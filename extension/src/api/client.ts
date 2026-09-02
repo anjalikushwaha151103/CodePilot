@@ -20,6 +20,12 @@ export interface TutoringResponse {
   shouldRevealSolution: boolean;
 }
 
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeout));
+}
+
 export class ApiClient {
   private baseUrl: string;
 
@@ -32,7 +38,7 @@ export class ApiClient {
    */
   async checkHealth(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/v1/health`, {
+      const response = await fetchWithTimeout(`${this.baseUrl}/api/v1/health`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -40,50 +46,60 @@ export class ApiClient {
       });
       
       return response.ok;
-    } catch (e) {
+    } catch (e: any) {
       console.warn('[CodePilot] Backend health check failed', e);
       return false;
     }
   }
 
   async login(email: string, password: string):Promise<string> {
-    const response = await fetch(`${this.baseUrl}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email, password })
-    });
+    try {
+      const response = await fetchWithTimeout(`${this.baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
 
-    if (!response.ok) {
-      if (response.status === 401) throw new Error("Invalid email or password");
-      throw new Error(`Login failed: ${response.statusText}`);
+      if (!response.ok) {
+        if (response.status === 401) throw new Error("Invalid email or password");
+        throw new Error(`Login failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.data.accessToken;
+    } catch (e: any) {
+      if (e.name === 'AbortError') throw new Error("Request timed out. Please try again.");
+      throw e;
     }
-
-    const data = await response.json();
-    return data.data.accessToken;
   }
 
   async submitTutoringRequest(token: string, request: TutoringRequest): Promise<TutoringResponse> {
-    const response = await fetch(`${this.baseUrl}/api/v1/tutoring`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(request)
-    });
+    try {
+      const response = await fetchWithTimeout(`${this.baseUrl}/api/v1/tutoring`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(request)
+      });
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => null);
-      if (response.status === 401) throw new Error("Session expired. Please log in again.");
-      if (response.status === 422 || response.status === 400) throw new Error("Invalid request data.");
-      if (response.status === 502 || response.status === 503) throw new Error("CodePilot AI is temporarily unavailable.");
-      throw new Error(errData?.message || `Tutoring request failed: ${response.statusText}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        if (response.status === 401) throw new Error("Session expired. Please log in again.");
+        if (response.status === 422 || response.status === 400) throw new Error("Invalid request data.");
+        if (response.status === 502 || response.status === 503) throw new Error("CodePilot AI is temporarily unavailable.");
+        throw new Error(errData?.message || `Tutoring request failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (e: any) {
+      if (e.name === 'AbortError') throw new Error("Request timed out. Please try again.");
+      throw e;
     }
-
-    const data = await response.json();
-    return data.data;
   }
 }
 

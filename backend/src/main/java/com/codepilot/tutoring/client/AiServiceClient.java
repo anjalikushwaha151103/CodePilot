@@ -4,15 +4,10 @@ import com.codepilot.config.AiServiceProperties;
 import com.codepilot.tutoring.dto.TutoringRequestDto;
 import com.codepilot.tutoring.dto.TutoringResponseDto;
 import com.codepilot.tutoring.exception.AiServiceException;
-import org.springframework.boot.web.client.ClientHttpRequestFactories;
-import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-
-import java.time.Duration;
 
 @Component
 public class AiServiceClient {
@@ -20,10 +15,6 @@ public class AiServiceClient {
     private final RestClient restClient;
 
     public AiServiceClient(AiServiceProperties aiServiceProperties, RestClient.Builder restClientBuilder) {
-        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS
-                .withConnectTimeout(Duration.ofSeconds(5))
-                .withReadTimeout(Duration.ofSeconds(aiServiceProperties.getTimeoutSeconds()));
-        
         this.restClient = restClientBuilder
                 .baseUrl(aiServiceProperties.getUrl())
                 .defaultHeader("Content-Type", "application/json")

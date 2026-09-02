@@ -1,20 +1,24 @@
-import pytest
-from httpx import AsyncClient, ASGITransport
+from fastapi.testclient import TestClient
 from app.main import app
 
-@pytest.mark.asyncio
-async def test_health_check():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        response = await ac.get("/api/v1/health")
+client = TestClient(app)
+
+def test_health_check():
+    response = client.get("/api/v1/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "UP"
     assert data["service"] == "codepilot-ai-service"
 
-@pytest.mark.asyncio
-async def test_root_endpoint():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        response = await ac.get("/")
+def test_readiness_check():
+    response = client.get("/api/v1/readiness")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "READY"
+    assert "checks" in data
+
+def test_root_endpoint():
+    response = client.get("/")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "OPERATIONAL"

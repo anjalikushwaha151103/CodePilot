@@ -54,3 +54,5 @@ redis_data/
 # Log files
 *.log
 logs/
+*.tsbuildinfo
+.swc/

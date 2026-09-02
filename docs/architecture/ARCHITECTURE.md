@@ -996,3 +996,66 @@ erDiagram
 * **RAG Knowledge Base:** Integrate company-specific interview problem trends and theoretical computer science textbooks into the context pipeline.
 
 ---
+
+
+---
+
+## 34. Phase 8 — Production Hardening, Deployment & Observability
+
+### Service Boundaries & Container Networking
+
+CodePilot uses Docker bridge networking (`codepilot-network`) with canonical service discovery names:
+
+```
++--------------------------------------------------------+
+|               Docker Bridge Network                    |
+|                                                        |
+|  +-------------------+        +--------------------+   |
+|  | codepilot-backend | <----> |codepilot-ai-service|   |
+|  | (Spring Boot:8080)|  HTTP  | (FastAPI:8000)     |   |
+|  +--------+----------+        +--------------------+   |
+|           |                                            |
+|     +-----+--------------+                             |
+|     |                    |                             |
+|     v                    v                             |
+| +---------------+ +---------------+                    |
+| |codepilot-     | |codepilot-     |                    |
+| |postgres (5432)| |redis (6379)   |                    |
+| +---------------+ +---------------+                    |
+|                                                        |
+|  +-------------------+                                 |
+|  | codepilot-web     | ---> Browser (Client-side API)  |
+|  | (Next.js:3000)    |                                 |
+|  +-------------------+                                 |
++--------------------------------------------------------+
+```
+
+### Health & Readiness Probes
+
+| Service | Endpoint | Probe Type | Behavior |
+|---|---|---|---|
+| **Backend** | `GET /api/v1/health` | Liveness | Returns `{"status":"UP", "service":"codepilot-backend", "timestamp":"..."}` |
+| **Backend** | `GET /actuator/health` | Deep Health | Spring Boot Actuator component status (secured in prod) |
+| **AI Service** | `GET /api/v1/health` | Liveness | Returns `{"status":"UP", "service":"codepilot-ai-service", "version":"..."}` |
+| **AI Service** | `GET /api/v1/readiness`| Readiness | Verifies Tree-sitter AST grammar load without calling external LLM |
+| **Web Dashboard**| `GET /api/health` | Liveness | Lightweight Next.js route returning `{ "status": "UP" }` |
+
+### Resilience & Failure Boundaries
+
+1. **AI Service Timeout & Fallback:**
+   - Spring Boot `RestClient` enforces a 30-second read timeout and 5-second connect timeout via `RestClientCustomizer`.
+   - AI service unreachable / 5xx responses map to `503 Service Unavailable` with user-friendly error messages.
+   - `@Transactional` is isolated from the external AI HTTP call to prevent database connection pool exhaustion.
+
+2. **Redis Graceful Degradation:**
+   - Redis connectivity failure does not crash the Spring Boot application on startup.
+   - Cache operations fail open without blocking core request execution.
+
+3. **Client Network Resilience:**
+   - Browser extension `fetchWithTimeout` enforces a 15-second `AbortController` timeout on all network requests.
+   - Network errors and 401s surface clear UI guidance rather than hanging spinners.
+
+### Observability & Request Tracing
+
+- **Correlation IDs:** The servlet filter `RequestIdFilter` assigns an `X-Request-ID` header (or generates an 8-character UUID) to every inbound request and injects it into the SLF4J MDC (`requestId`).
+- **Structured Error Responses:** All error responses use the standard `ApiResponse` envelope without leaking stack traces or internal exception details.

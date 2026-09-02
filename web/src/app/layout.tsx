@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "CodePilot - AI-Powered Coding Mentor",
@@ -23,11 +24,11 @@ export default function RootLayout({
               </div>
               <span className="font-semibold text-lg tracking-tight">CodePilot</span>
               <span className="text-xs px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800">
-                Phase 7
+                CodePilot
               </span>
             </div>
             <nav className="flex items-center space-x-6 text-sm text-slate-400">
-              <a href="/dashboard" className="hover:text-slate-200 transition-colors">Dashboard</a>
+              <Link href="/dashboard" className="hover:text-slate-200 transition-colors">Dashboard</Link>
             </nav>
           </header>
 
@@ -36,7 +37,7 @@ export default function RootLayout({
           </main>
 
           <footer className="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
-            CodePilot Project Phase 7 Learning Engine &copy; 2026
+            CodePilot Project Learning Engine &copy; 2026
           </footer>
         </AuthProvider>
       </body>

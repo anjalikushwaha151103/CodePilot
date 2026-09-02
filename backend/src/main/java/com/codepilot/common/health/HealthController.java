@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -13,12 +15,11 @@ import java.util.Map;
 public class HealthController {
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Map<String, Object>>> checkHealth() {
-        Map<String, Object> healthInfo = Map.of(
-                "status", "UP",
-                "service", "codepilot-backend",
-                "version", "1.0.0-MVP"
-        );
-        return ResponseEntity.ok(ApiResponse.success("Backend service operational", healthInfo));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("status", "UP");
+        response.put("service", "codepilot-backend");
+        response.put("timestamp", Instant.now().toString());
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

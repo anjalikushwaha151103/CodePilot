@@ -5,7 +5,7 @@ export interface ExtensionConfig {
 }
 
 export const config: ExtensionConfig = {
-  backendApiUrl: 'http://localhost:8080',
-  dashboardUrl: 'http://localhost:3000/dashboard',
+  backendApiUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080',
+  dashboardUrl: import.meta.env.VITE_DASHBOARD_URL || 'http://localhost:3000/dashboard',
   version: '1.0.0-MVP',
 };

@@ -1,9 +1,15 @@
 server:
   port: ${SERVER_PORT:8080}
   error:
-    include-message: always
+    include-message: never
+  tomcat:
+    max-swallow-size: 2MB
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 5MB
   application:
     name: codepilot-backend
   profiles:
@@ -39,6 +45,7 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 2000ms
+      connect-timeout: 2000ms
 
 management:
   endpoints:
@@ -47,7 +54,7 @@ management:
         include: health,info,metrics,flyway
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
 
 codepilot:
   ai-service:

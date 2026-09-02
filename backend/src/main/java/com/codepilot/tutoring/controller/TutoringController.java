@@ -26,15 +26,10 @@ public class TutoringController {
             @Valid @RequestBody TutoringRequestDto requestDto,
             Authentication authentication) {
         
-        try {
-            UUID userId = UUID.fromString(authentication.getName());
-            
-            TutoringResponseDto response = tutoringService.getTutoringHint(userId, requestDto);
-            
-            return ResponseEntity.ok(ApiResponse.success("Hint generated successfully", response));
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
-        }
+        UUID userId = UUID.fromString(authentication.getName());
+        
+        TutoringResponseDto response = tutoringService.getTutoringHint(userId, requestDto);
+        
+        return ResponseEntity.ok(ApiResponse.success("Hint generated successfully", response));
     }
 }

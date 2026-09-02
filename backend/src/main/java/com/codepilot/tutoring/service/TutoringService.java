@@ -27,20 +27,24 @@ public class TutoringService {
         this.eventPublisher = eventPublisher;
     }
 
-    @Transactional
     public TutoringResponseDto getTutoringHint(UUID userId, TutoringRequestDto requestDto) {
         validateProgression(userId, requestDto);
 
         TutoringResponseDto response = aiServiceClient.getTutoringHint(requestDto);
 
+        saveSessionAndPublishEvent(userId, requestDto, response);
+
+        return response;
+    }
+
+    @Transactional
+    protected void saveSessionAndPublishEvent(UUID userId, TutoringRequestDto requestDto, TutoringResponseDto response) {
         TutoringSession session = saveTutoringSession(userId, requestDto, response);
 
         eventPublisher.publishEvent(new com.codepilot.learning.event.TutoringSessionCompletedEvent(
                 session, 
                 requestDto.getProblemContext().getTags()
         ));
-
-        return response;
     }
 
     private void validateProgression(UUID userId, TutoringRequestDto requestDto) {

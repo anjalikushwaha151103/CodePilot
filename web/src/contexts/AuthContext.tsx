@@ -18,6 +18,15 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {}
 });
 
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp ? payload.exp * 1000 < Date.now() : false;
+  } catch {
+    return true;
+  }
+}
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,9 +35,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
+    if (token && !isTokenExpired(token)) {
       setIsAuthenticated(true);
     } else {
+      if (token) {
+        localStorage.removeItem('token');
+      }
       setIsAuthenticated(false);
       if (pathname.startsWith('/dashboard')) {
         router.push('/login');

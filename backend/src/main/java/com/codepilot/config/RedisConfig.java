@@ -14,9 +14,14 @@ public class RedisConfig {
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setHashKeySerializer(new StringRedisSerializer());
+        try {
+            template.setConnectionFactory(connectionFactory);
+            template.setKeySerializer(new StringRedisSerializer());
+            template.setHashKeySerializer(new StringRedisSerializer());
+            connectionFactory.getConnection().close();
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(RedisConfig.class).warn("Redis connection failed. Application will gracefully degrade without Redis.");
+        }
         return template;
     }
 }

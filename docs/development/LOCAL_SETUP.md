@@ -1,7 +1,7 @@
 # CodePilot Local Development Setup Guide
 
-> **Phase 1 Infrastructure & Local Developer Environment Guide**  
-> **Last Updated:** August 2026
+> **Production Setup & Local Developer Environment Guide**  
+> **Last Updated:** Phase 8 Production Hardening
 
 ---
 
@@ -12,16 +12,13 @@ Before running CodePilot locally, ensure your environment meets the following so
 | Tool | Minimum Version | Recommended | Notes |
 |---|---|---|---|
 | **Java JDK** | 21 | 21 | OpenJDK Temurin 21 LTS required |
-| **Node.js** | 20.x | 22.x | LTS |
-| **Python** | 3.12 | 3.12 | Python 3.12 required (see note below) |
-| **Docker & Docker Compose** | 24.0+ | Latest | For PostgreSQL 16 & Redis 7 |
+| **Node.js** | 20.x | 20.x LTS | Node 20 LTS recommended |
+| **Python** | 3.12 | 3.12 | Python 3.12 required |
+| **Docker & Docker Compose** | 24.0+ | Latest | For full-stack containerization |
 | **Git** | 2.40+ | Latest | Monorepo version control |
 
 > [!IMPORTANT]
-> **Java 21** is the canonical version specified in the architecture. The project's `pom.xml` targets `java.version=21`. JDK 17 will not satisfy the Maven compiler settings.
-
-> [!IMPORTANT]
-> **Python 3.12** is the canonical version specified in the architecture. Python 3.13 may work but is not the target. CI runs against Python 3.12.
+> **Java 21** is the canonical version specified in the architecture. The project's `pom.xml` targets `java.version=21`.
 
 ---
 
@@ -29,6 +26,7 @@ Before running CodePilot locally, ensure your environment meets the following so
 
 1. Clone the repository and navigate to the root directory:
    ```bash
+   git clone https://github.com/anjalikushwaha151103/CodePilot.git
    cd CodePilot
    ```
 
@@ -37,170 +35,131 @@ Before running CodePilot locally, ensure your environment meets the following so
    cp .env.example .env
    ```
 
-3. Review default settings in `.env`:
-   * **PostgreSQL:** `localhost:5432` (`codepilot` / `codepilot_user`)
-   * **Redis:** `localhost:6379`
-   * **Spring Boot Backend:** `http://localhost:8080`
-   * **FastAPI AI Service:** `http://localhost:8000`
-   * **Next.js Web App:** `http://localhost:3000`
+3. Configure required secrets in `.env`:
+   * **`JWT_SECRET`**: Required. Generate with `openssl rand -base64 64`
+   * **`LLM_PROVIDER`**: Defaults to `mock`. Set to `gemini` if using Google Gemini
+   * **`GEMINI_API_KEY`**: Required only if `LLM_PROVIDER=gemini`
 
 ---
 
-## 3. Starting Local Infrastructure (PostgreSQL & Redis)
+## 3. Running with Docker Compose (Recommended)
 
-Launch the background data services using Docker Compose:
+To start the entire CodePilot distributed system (PostgreSQL, Redis, Spring Boot Backend, FastAPI AI Service, Next.js Web Dashboard):
 
 ```bash
-docker-compose up -d
+docker compose up --build
 ```
 
-Verify service health:
+### Service Map
+
+| Service | Container Name | Port | Health Endpoint |
+|---|---|---|---|
+| **Spring Boot Backend** | `codepilot-backend` | `8080` | `http://localhost:8080/api/v1/health` |
+| **FastAPI AI Service** | `codepilot-ai-service` | `8000` | `http://localhost:8000/api/v1/health` |
+| **Next.js Web App** | `codepilot-web` | `3000` | `http://localhost:3000/api/health` |
+| **PostgreSQL 16** | `codepilot-postgres` | `5432` | `pg_isready` (internal) |
+| **Redis 7** | `codepilot-redis` | `6379` | `redis-cli ping` (internal) |
+
+*To stop all containers and retain data volume:*
 ```bash
-docker-compose ps
+docker compose down
 ```
 
-*To stop services:*
+*To stop and wipe database:*
 ```bash
-docker-compose down
+docker compose down -v
 ```
 
 ---
 
-## 4. Starting the Spring Boot Backend
+## 4. Running Services Individually (Development Mode)
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
+If you prefer running components on bare metal for active code iteration:
 
-2. Run compilation and unit tests:
-   ```bash
-   # On Windows PowerShell / CMD:
-   mvnw.cmd test
+### 4.1. Start Database & Cache
+```bash
+docker compose up -d postgres redis
+```
 
-   # On Linux / macOS:
-   ./mvnw test
-   ```
+### 4.2. Run Backend (Spring Boot 3 / Java 21)
+```bash
+cd backend
+# Windows:
+.\mvnw.cmd spring-boot:run
 
-3. Start the application:
-   ```bash
-   # On Windows:
-   mvnw.cmd spring-boot:run
+# Linux / macOS:
+./mvnw spring-boot:run
+```
+*Backend runs at `http://localhost:8080`.*
 
-   # On Linux / macOS:
-   ./mvnw spring-boot:run
-   ```
-   *The backend starts at `http://localhost:8080`.*
+### 4.3. Run AI Service (FastAPI / Python 3.12)
+```bash
+cd ai-service
 
----
+# Create virtual environment:
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux/macOS:
+source .venv/bin/activate
 
-## 5. Starting the FastAPI AI & Code Intelligence Service
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+*AI service runs at `http://localhost:8000` (Swagger docs at `http://localhost:8000/docs`).*
 
-1. Navigate to the AI service directory:
-   ```bash
-   cd ai-service
-   ```
+### 4.4. Run Web Dashboard (Next.js 14)
+```bash
+cd web
+npm install
+npm run dev
+```
+*Web dashboard runs at `http://localhost:3000`.*
 
-2. Create and activate a Python virtual environment:
-   ```bash
-   # Windows:
-   python -m venv .venv
-   .venv\Scripts\activate
-
-   # Linux / macOS:
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Run tests:
-   ```bash
-   pytest
-   ```
-
-5. Start the FastAPI development server:
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
-   *The service starts at `http://localhost:8000` (OpenAPI Docs at `http://localhost:8000/docs`).*
+### 4.5. Build & Load Browser Extension (Manifest V3)
+```bash
+cd extension
+npm install
+npm run build
+```
+Load the extension in Chrome:
+1. Open `chrome://extensions/`
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked**
+4. Select `CodePilot/extension/dist`
 
 ---
 
-## 6. Starting the Web Dashboard (Next.js)
+## 5. Verification & Health Probes
 
-1. Navigate to the web app directory:
-   ```bash
-   cd web
-   ```
+Run health checks across all services:
 
-2. Install dependencies & build:
-   ```bash
-   npm install
-   npm run build
-   ```
+```bash
+# Backend liveness
+curl http://localhost:8080/api/v1/health
 
-3. Start dev server:
-   ```bash
-   npm run dev
-   ```
-   *Dashboard starts at `http://localhost:3000`.*
+# AI Service liveness & readiness
+curl http://localhost:8000/api/v1/health
+curl http://localhost:8000/api/v1/readiness
+
+# Web Dashboard liveness
+curl http://localhost:3000/api/health
+```
 
 ---
 
-## 7. Loading the Browser Extension (Manifest V3)
+## 6. Running Test Suites
 
-1. Navigate to the extension directory:
-   ```bash
-   cd extension
-   ```
+```bash
+# Backend (71 tests)
+cd backend && ./mvnw test
 
-2. Install dependencies & build bundle:
-   ```bash
-   npm install
-   npm run build
-   ```
+# AI Service (12 tests)
+cd ai-service && python -m pytest -v
 
-3. Load as Unpacked Extension in Chrome:
-   1. Open Chrome and navigate to `chrome://extensions/`.
-   2. Enable **Developer mode** in the top-right corner toggle.
-   3. Click **Load unpacked**.
-   4. Select the `CodePilot/extension/dist` directory.
-   5. Pin the **CodePilot** icon and open the Side Panel on any tab.
+# Web Dashboard (7 tests)
+cd web && npm test
 
----
-
-## 8. Service Health Verification Commands
-
-| Service | Health Check Endpoint | Expected HTTP Response |
-|---|---|---|
-| **Backend** | `curl http://localhost:8080/api/v1/health` | `{"success":true,"message":"Backend service operational",...}` |
-| **Actuator** | `curl http://localhost:8080/actuator/health` | `{"status":"UP",...}` |
-| **AI Service**| `curl http://localhost:8000/health` | `{"status":"UP","service":"codepilot-ai-service",...}` |
-| **Web Dashboard** | `curl http://localhost:3000` | HTTP `200 OK` (HTML) |
-
----
-
-## 9. Troubleshooting
-
-* **PowerShell Execution Policy Error on Windows:**  
-  If `npm` or `.ps1` scripts fail due to execution policy, run command using `cmd /c "..."` or set execution policy:
-  ```powershell
-  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-  ```
-* **PostgreSQL Connection Refused:**  
-  Ensure Docker Desktop is running and `docker-compose up -d` completed without port conflicts on `5432`.
-* **Port 8080 already in use:**  
-  Change `SERVER_PORT=8081` in your local `.env` file.
-
----
-  
-## 10. Authentication Configuration (Phase 2B)  
-  
-The backend now uses JWTs for authentication. The following environment variables must be defined in your .env file (copied from .env.example):  
-- JWT_SECRET: A securely generated secret key (minimum 32 characters, preferably Base64 encoded).  
-- JWT_EXPIRATION_SECONDS: Token expiration time in seconds (default is 3600, or 1 hour).  
-- CORS_ALLOWED_ORIGINS: Comma-separated list of allowed origins (e.g. http://localhost:3000). 
+# Browser Extension (8 tests)
+cd extension && npm test
+```

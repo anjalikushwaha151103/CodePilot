@@ -1,12 +1,18 @@
 package com.codepilot.tutoring.dto;
 
 import java.util.List;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public class ProblemContextDto {
+    @NotBlank(message = "Platform is required")
     private String platform;
+    @NotBlank(message = "Problem ID is required")
     private String problemId;
+    @Size(max = 500, message = "Title must not exceed 500 characters")
     private String title;
     private String url;
+    @Size(max = 10000, message = "Problem description must not exceed 10000 characters")
     private String description;
     private List<String> constraints;
     private List<String> examples;
